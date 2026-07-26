@@ -8,6 +8,7 @@ import datetime
 
 import models, schemas, crud
 from database import engine, SessionLocal
+from journey_stitcher import stitch_journey
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -51,9 +52,38 @@ def read_incidents(skip: int = 0, limit: int = 100, db: Session = Depends(get_db
     incidents = crud.get_incidents(db, skip=skip, limit=limit)
     return incidents
 
+@app.put("/api/incidents/{incident_id}/status", response_model=schemas.Incident)
+def update_incident_status(incident_id: int, status_update: schemas.IncidentStatusUpdate, db: Session = Depends(get_db)):
+    db_incident = crud.update_incident_status(db, incident_id=incident_id, new_status=status_update.status)
+    if db_incident is None:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return db_incident
+
+
+@app.get("/api/journey/{customer_id}/stitched")
+def get_stitched_journey(customer_id: int, db: Session = Depends(get_db)):
+    customer = crud.get_customer(db, customer_id=customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    events = (
+        db.query(models.JourneyEvent)
+        .filter(models.JourneyEvent.customer_id == customer_id)
+        .order_by(models.JourneyEvent.timestamp.asc())
+        .all()
+    )
+    journey = stitch_journey(events)
+    journey["customer"] = {
+        "id": customer.id,
+        "name": f"{customer.first_name} {customer.last_name}",
+        "email": customer.email,
+        "health_score": customer.health_score,
+        "churn_risk": customer.churn_risk,
+    }
+    return journey
+
+
 @app.get("/api/dashboard/kpis")
-def get_dashboard_kpis(db: Session = Depends(get_db)):
-    # Mock KPIs for the dashboard
+def get_dashboard_kpis(db: Session = Depends(get_db)):    # Mock KPIs for the dashboard
     return {
         "critical_incidents": 12,
         "broken_journeys": 143,

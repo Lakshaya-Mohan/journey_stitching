@@ -1,167 +1,272 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Compass, Users, Activity, AlertTriangle, Radio, Home, ChevronLeft, Phone, Mail, Clock, BrainCircuit, CheckCircle2, XCircle } from "lucide-react";
+import {
+  ArrowLeft, Phone, Mail, Clock, CheckCircle2, XCircle,
+  AlertCircle, MapPin, ShieldAlert, Activity,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams } from "next/navigation";
+import { Sidebar } from "@/components/Sidebar";
+
+interface JourneyEvent {
+  id: number;
+  channel: string;
+  event_type: string;
+  status: string;
+  timestamp: string;
+}
+
+interface Customer {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  health_score: number;
+  churn_risk: number;
+  created_at: string;
+  events: JourneyEvent[];
+}
 
 export default function CustomerProfilePage() {
-  const params = useParams();
-  const [customer, setCustomer] = useState<any>(null);
+  const { id } = useParams();
+  const [customer, setCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
-    const fetchCustomer = async () => {
-      try {
-        const response = await axios.get(`http://localhost:8000/api/customers/${params.id}`);
-        setCustomer(response.data);
-      } catch (error) {
-        console.error("Error fetching customer:", error);
-      }
-    };
-    if (params.id) fetchCustomer();
-  }, [params.id]);
+    if (!id) return;
+    axios
+      .get(`http://localhost:8000/api/customers/${id}`)
+      .then((r) => setCustomer(r.data))
+      .catch((e) => console.error("Error fetching customer:", e));
+  }, [id]);
 
-  if (!customer) return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+  if (!customer) {
+    return (
+      <div className="flex min-h-screen bg-background text-foreground">
+        <Sidebar />
+        <main className="flex-1 flex items-center justify-center text-muted-foreground">
+          Loading profile…
+        </main>
+      </div>
+    );
+  }
+
+  const sortedEvents = [...customer.events].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-white/10 glass hidden md:flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-white/5">
-          <Link href="/" className="font-bold text-xl tracking-tighter text-primary flex items-center gap-2">
-            <Compass className="h-5 w-5" />
-            JourneyIQ
-          </Link>
-        </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-            <Home className="h-5 w-5" />
-            Executive Dashboard
-          </Link>
-          <Link href="/customers" className="flex items-center gap-3 px-3 py-2 bg-primary/10 text-primary rounded-lg transition-colors">
-            <Users className="h-5 w-5" />
-            Customer 360
-          </Link>
-          <Link href="/timeline" className="flex items-center gap-3 px-3 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-            <Activity className="h-5 w-5" />
-            Journey Timeline
-          </Link>
-          <Link href="/incidents" className="flex items-center gap-3 px-3 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-            <AlertTriangle className="h-5 w-5" />
-            Incidents
-          </Link>
-          <Link href="/alerts" className="flex items-center gap-3 px-3 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-            <Radio className="h-5 w-5" />
-            Live Alerts
-          </Link>
-        </nav>
-      </aside>
+    <div className="flex min-h-screen bg-background text-foreground">
+      <Sidebar />
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 overflow-auto">
-        <header className="mb-8">
-          <Link href="/customers" className="inline-flex items-center text-sm text-gray-400 hover:text-white mb-4 transition-colors">
-            <ChevronLeft className="h-4 w-4 mr-1" /> Back to Customers
+      <main className="flex-1 overflow-auto">
+        {/* Profile header */}
+        <header className="bg-card border-b border-border px-8 pt-8 pb-10 relative overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-end pr-10 opacity-[0.04] pointer-events-none">
+            <ShieldAlert className="w-72 h-72 text-foreground" />
+          </div>
+
+          <Link
+            href="/customers"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 font-medium"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Customers
           </Link>
-          <div className="flex justify-between items-end">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-2xl border border-primary/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-                {customer.first_name[0]}{customer.last_name[0]}
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">{customer.first_name} {customer.last_name}</h1>
-                <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
-                  <span className="flex items-center gap-1"><Mail className="h-4 w-4" /> {customer.email}</span>
-                  <span className="flex items-center gap-1"><Phone className="h-4 w-4" /> {customer.phone}</span>
-                </div>
+
+          <div className="flex flex-col md:flex-row md:items-end gap-6 relative z-10">
+            <div className="w-20 h-20 rounded-full bg-primary/10 border-4 border-background flex items-center justify-center text-primary font-bold text-2xl shadow">
+              {customer.first_name[0]}{customer.last_name[0]}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                {customer.first_name} {customer.last_name}
+              </h1>
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground font-medium">
+                <span className="flex items-center gap-1">
+                  <Mail className="h-4 w-4" /> {customer.email}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Phone className="h-4 w-4" /> {customer.phone}
+                </span>
               </div>
             </div>
-            <div className="flex gap-4">
-              <div className="glass px-4 py-2 rounded-xl text-center border-white/5">
-                <div className="text-xs text-gray-400 mb-1">Health Score</div>
-                <div className={`text-xl font-bold ${customer.health_score > 70 ? 'text-emerald-400' : customer.health_score > 40 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {Math.round(customer.health_score)}/100
-                </div>
-              </div>
-              <div className="glass px-4 py-2 rounded-xl text-center border-white/5">
-                <div className="text-xs text-gray-400 mb-1">Churn Risk</div>
-                <div className="text-xl font-bold text-orange-400">
-                  {(customer.churn_risk * 100).toFixed(0)}%
-                </div>
-              </div>
+
+            <div className="flex gap-3 shrink-0">
+              <ScoreBadge
+                label="Health Score"
+                value={`${Math.round(customer.health_score)}`}
+                color={
+                  customer.health_score > 70
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : customer.health_score > 40
+                    ? "text-yellow-600 dark:text-yellow-400"
+                    : "text-destructive"
+                }
+              />
+              <ScoreBadge
+                label="Churn Risk"
+                value={`${(customer.churn_risk * 100).toFixed(0)}%`}
+                color={customer.churn_risk > 0.5 ? "text-destructive" : "text-foreground"}
+              />
+              <Link
+                href={`/timeline?customer=${customer.id}`}
+                className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-4 py-3 rounded-xl text-center flex flex-col items-center justify-center gap-1 transition-colors min-w-[80px]"
+              >
+                <Activity className="h-4 w-4" />
+                <span className="text-xs font-medium">Journey</span>
+              </Link>
             </div>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* AI Summary */}
-          <div className="lg:col-span-2 space-y-6">
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-              className="glass p-6 rounded-2xl border border-primary/20 relative overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-              <div className="flex items-center gap-2 mb-4 text-primary font-medium">
-                <BrainCircuit className="h-5 w-5" />
-                AI Journey Summary & Next Best Action
-              </div>
-              <p className="text-gray-300 leading-relaxed mb-4">
-                {customer.first_name} recently attempted to transfer funds via the Mobile App but encountered multiple errors. 
-                They subsequently called the Call Center and waited in the IVR for an extended period. 
-                This broken cross-channel experience has severely impacted their health score and increased churn risk.
-              </p>
-              <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl inline-block text-sm">
-                <strong className="text-primary block mb-1">Recommended Action:</strong>
-                Proactively reach out with a personalized apology and offer a priority support line to resolve the transfer issue.
-              </div>
-            </motion.div>
+        <div className="p-8 grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Left column */}
+          <div className="xl:col-span-2 space-y-6">
+            {customer.churn_risk > 0.4 && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-destructive/5 border border-destructive/20 p-5 rounded-xl flex items-start gap-4"
+              >
+                <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-destructive mb-1">High Churn Risk Detected</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    AI identifies a frustrated journey. Customer attempted a transfer on Mobile 3 times before calling
+                    support. Recommended action: offer a fee waiver and dedicated support line.
+                  </p>
+                  <button className="mt-3 bg-destructive text-destructive-foreground px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors">
+                    Trigger Retention Playbook
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
-            {/* Interaction History */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              className="glass p-6 rounded-2xl border border-white/5"
+            {/* Cross-channel timeline */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+              className="bg-card p-6 rounded-xl border border-border"
             >
-              <h3 className="font-bold text-lg mb-6">Recent Cross-Channel Interactions</h3>
-              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent">
-                {customer.events && customer.events.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((event: any, index: number) => (
-                  <div key={event.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white/10 bg-background shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 relative z-10 text-gray-400">
-                      {event.status === 'Success' ? <CheckCircle2 className="h-5 w-5 text-emerald-400" /> : <XCircle className="h-5 w-5 text-red-400" />}
-                    </div>
-                    <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] glass p-4 rounded-xl border border-white/5">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-semibold">{event.event_type}</span>
-                        <span className="text-xs text-gray-500 flex items-center"><Clock className="h-3 w-3 mr-1"/> {new Date(event.timestamp).toLocaleDateString()}</span>
+              <h3 className="font-semibold text-base mb-6">Recent Cross-Channel Interactions</h3>
+
+              {sortedEvents.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No events recorded.</p>
+              ) : (
+                <ol className="relative border-l border-border space-y-6 pl-6">
+                  {sortedEvents.map((event) => (
+                    <li key={event.id} className="relative">
+                      <span
+                        className={`absolute -left-[21px] flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background ${
+                          event.status === "Success"
+                            ? "text-emerald-500"
+                            : "text-destructive"
+                        }`}
+                      >
+                        {event.status === "Success" ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          <XCircle className="h-4 w-4" />
+                        )}
+                      </span>
+                      <div className="bg-muted/30 rounded-lg px-4 py-3 border border-border">
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <span className="font-medium text-sm text-foreground">{event.event_type}</span>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
+                            <Clock className="h-3 w-3" />
+                            {new Date(event.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="h-3 w-3" /> {event.channel}
+                          </span>
+                          <span
+                            className={`ml-3 font-medium ${
+                              event.status === "Success"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-destructive"
+                            }`}
+                          >
+                            {event.status}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-400">Channel: {event.channel}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </motion.div>
           </div>
 
-          {/* Right Sidebar widgets */}
-          <div className="space-y-6">
-            <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="glass p-6 rounded-2xl border border-white/5">
-              <h3 className="font-bold text-lg mb-4">Customer Details</h3>
-              <ul className="space-y-3 text-sm text-gray-300">
-                <li className="flex justify-between border-b border-white/5 pb-2">
-                  <span className="text-gray-500">ID</span> <span>#{customer.id}</span>
-                </li>
-                <li className="flex justify-between border-b border-white/5 pb-2">
-                  <span className="text-gray-500">Status</span> <span className="text-emerald-400">Active</span>
-                </li>
-                <li className="flex justify-between pb-2">
-                  <span className="text-gray-500">Member Since</span> <span>{new Date(customer.created_at).toLocaleDateString()}</span>
-                </li>
-              </ul>
-            </motion.div>
-          </div>
+          {/* Right sidebar */}
+          <motion.div
+            initial={{ opacity: 0, x: 8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.12 }}
+            className="bg-card p-6 rounded-xl border border-border h-fit"
+          >
+            <h3 className="font-semibold text-base mb-4">Customer Details</h3>
+            <dl className="space-y-3 text-sm">
+              <DetailRow label="ID" value={`#${customer.id}`} />
+              <DetailRow label="Status" value="Active" valueClass="text-emerald-600 dark:text-emerald-400" />
+              <DetailRow
+                label="Member Since"
+                value={new Date(customer.created_at).toLocaleDateString()}
+              />
+              <DetailRow label="Total Events" value={`${customer.events.length}`} />
+              <DetailRow
+                label="Failed Events"
+                value={`${customer.events.filter((e) => e.status === "Failed").length}`}
+                valueClass={
+                  customer.events.filter((e) => e.status === "Failed").length > 0
+                    ? "text-destructive"
+                    : undefined
+                }
+              />
+            </dl>
+          </motion.div>
         </div>
       </main>
+    </div>
+  );
+}
+
+function ScoreBadge({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color: string;
+}) {
+  return (
+    <div className="bg-background border border-border px-4 py-3 rounded-xl text-center min-w-[80px]">
+      <div className="text-xs text-muted-foreground font-medium mb-1">{label}</div>
+      <div className={`text-2xl font-bold ${color}`}>{value}</div>
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  valueClass,
+}: {
+  label: string;
+  value: string;
+  valueClass?: string;
+}) {
+  return (
+    <div className="flex justify-between items-center border-b border-border pb-3 last:border-0 last:pb-0">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={`font-medium text-right ${valueClass ?? "text-foreground"}`}>{value}</dd>
     </div>
   );
 }
